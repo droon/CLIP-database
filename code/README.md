@@ -129,6 +129,10 @@ python image_database.py search "sunset" --query2 /path/to/image.jpg --weights 0
 #### Negative Prompts (Exclusion)
 Use negative prompts to exclude unwanted concepts from your search results. The system subtracts the negative embedding from your query, moving results away from the negative concept.
 
+![Search Results Example](browser.png)
+
+The screenshot above shows example search results with similarity scores. Results are displayed in an HTML gallery with image previews and direct file access links.
+
 **Text negative prompt:**
 ```bash
 cd code
@@ -219,9 +223,21 @@ The SQLite database contains:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+**MIT License** - see [LICENSE](LICENSE) file for details.
 
-This project uses:
-- [SigLIP 2](https://huggingface.co/google/siglip2-so400m-patch14-224) - Apache 2.0 License
-- [sqlite-vec](https://github.com/asg017/sqlite-vec) - MIT/Apache 2.0 dual license
-- SQLite - Public Domain
+This project is licensed under the MIT License, which is a permissive open-source license that allows:
+- Commercial use
+- Modification
+- Distribution
+- Private use
+- Patent use
+- Sublicensing
+
+The only requirement is to include the original copyright notice and license text.
+
+### Third-Party Dependencies
+
+This project uses the following open-source components:
+- **[SigLIP 2 SO400M](https://huggingface.co/google/siglip2-so400m-patch14-224)** - Apache 2.0 License (Google)
+- **[sqlite-vec](https://github.com/asg017/sqlite-vec)** - MIT/Apache 2.0 dual license
+- **SQLite** - Public Domain (no license restrictions)
