@@ -43,46 +43,8 @@ pip install -r requirements.txt
 pip install sqlite-vec
 ```
 
-4. Configure paths by creating `config.json` in the project root:
-```bash
-# Copy the example config file
-cp code/config.json.example ../config.json
-# Then edit config.json with your preferred paths
-```
+4. (Optional) Copy `config.json.example` to `config.json` and edit paths if needed.
 
-Or create `config.json` manually in the project root:
-```json
-{
-  "database_path": "image_database.db",
-  "model_cache_dir": "models",
-  "results_dir": "results",
-  "thumbnails_dir": "thumbnails",
-  "umap_output_file": "umap_3d_visualization.html",
-  "umap_cache_file": "umap_projections_cache.pkl",
-  "umap_metadata_file": "umap_image_metadata.json"
-}
-```
-
-All paths in `config.json` are relative to the project root directory. The code automatically reads from this configuration file. If `config.json` doesn't exist, it will use default values.
-
-**Note:** `config.json` is not tracked by git (it's in `.gitignore`), so you can safely store your personal paths without exposing them publicly. The `config.json.example` file shows the expected format.
-
-## Project Structure
-
-```
-CLIP-database/
-├── code/                    # Public code (tracked by git)
-│   ├── image_database.py   # Main database script
-│   ├── visualize_umap.py   # UMAP visualization script
-│   ├── requirements.txt    # Python dependencies
-│   ├── config.json.example  # Example config file (committed to git)
-│   └── README.md          # This file
-├── config.json             # Your personal config (not tracked, create from example)
-├── image_database.db        # SQLite database (created automatically)
-├── models/                  # Model cache directory (created automatically)
-├── results/                 # Search results HTML files (created automatically)
-└── umap_3d_visualization.html  # UMAP visualization output
-```
 
 ## Usage
 
@@ -95,7 +57,7 @@ cd code
 python image_database.py scan /path/to/images
 ```
 
-The script will automatically use paths from `config.json` in the project root. You can override them with command-line arguments if needed:
+You can override paths with command-line arguments if needed:
 ```bash
 python image_database.py scan /path/to/images --db ../image_database.db --model-cache ../models
 ```
@@ -126,37 +88,10 @@ cd code
 python image_database.py search "sunset" --query2 /path/to/image.jpg --weights 0.7 0.3 -k 20
 ```
 
-#### Negative Prompts (Exclusion)
-Use negative prompts to exclude unwanted concepts from your search results. The system subtracts the negative embedding from your query, moving results away from the negative concept.
-
-![Search Results Example](browser.png)
-
-The screenshot above shows example search results with similarity scores. Results are displayed in an HTML gallery with image previews and direct file access links.
-
-**Text negative prompt:**
+#### Negative Prompts
 ```bash
 cd code
-python image_database.py search "beautiful landscape" --negative "people" -k 20
-```
-
-**Image negative prompt:**
-```bash
-cd code
-python image_database.py search "sunset" --negative /path/to/unwanted_image.jpg --negative-image -k 20
-```
-
-**Adjust negative weight:**
-```bash
-cd code
-python image_database.py search "nature" --negative "buildings" --negative-weight 0.7 -k 20
-```
-
-The `--negative-weight` parameter (default: 0.5) controls how strongly the negative prompt affects results. Higher values (0.7-1.0) exclude the negative concept more aggressively, while lower values (0.2-0.4) provide subtle filtering.
-
-**Combined with other features:**
-```bash
-cd code
-python image_database.py search "ocean" --query2 /path/to/reference.jpg --negative "boats" --weights 0.6 0.4 --negative-weight 0.6 -k 20
+python image_database.py search "nature" --negative "buildings" -k 20
 ```
 
 #### Interactive Mode
@@ -173,11 +108,6 @@ In interactive mode:
 - Change result count with `k:20`
 - Type `quit` or `exit` to end session
 
-**Negative prompt examples in interactive mode:**
-- `ocean - boats` (exclude boats from ocean images)
-- `nature - buildings` (find nature without buildings)
-- `portrait - image:/path/to/bad_example.jpg` (exclude similar style to bad example)
-- `sunset + ocean - people` (combine positive queries and exclude people)
 
 ### 3D Visualization
 
@@ -223,21 +153,9 @@ The SQLite database contains:
 
 ## License
 
-**MIT License** - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-This project is licensed under the MIT License, which is a permissive open-source license that allows:
-- Commercial use
-- Modification
-- Distribution
-- Private use
-- Patent use
-- Sublicensing
-
-The only requirement is to include the original copyright notice and license text.
-
-### Third-Party Dependencies
-
-This project uses the following open-source components:
-- **[SigLIP 2 SO400M](https://huggingface.co/google/siglip2-so400m-patch14-224)** - Apache 2.0 License (Google)
-- **[sqlite-vec](https://github.com/asg017/sqlite-vec)** - MIT/Apache 2.0 dual license
-- **SQLite** - Public Domain (no license restrictions)
+This project uses:
+- [SigLIP 2](https://huggingface.co/google/siglip2-so400m-patch14-224) - Apache 2.0 License
+- [sqlite-vec](https://github.com/asg017/sqlite-vec) - MIT/Apache 2.0 dual license
+- SQLite - Public Domain
