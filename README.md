@@ -54,12 +54,7 @@ Scan a directory and build the image database:
 
 ```bash
 cd code
-python image_database.py scan /path/to/images
-```
-
-You can override paths with command-line arguments if needed:
-```bash
-python image_database.py scan /path/to/images --db ../image_database.db --model-cache ../models
+python image_database.py scan /path/to/images --batch-size 75 --inference-batch-size 16 --profile --limit 100
 ```
 
 Options:
