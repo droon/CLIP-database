@@ -5,22 +5,6 @@ Generate a UMAP 3D visualization of image embeddings with clustering and image p
 NOTE: This code was generated with AI assistance.
 """
 
-# ============================================================================
-# Configuration Variables - Modify these paths as needed
-# ============================================================================
-# Database path (SQLite database file)
-DB_PATH = "image_database.db"
-
-# Output file for the 3D visualization
-OUTPUT_HTML_FILE = "umap_3d_visualization.html"
-
-# Cache file for UMAP projections (to avoid recomputing)
-UMAP_CACHE_FILE = "umap_projections_cache.pkl"
-
-# Image metadata JSON file
-IMAGE_METADATA_FILE = "umap_image_metadata.json"
-# ============================================================================
-
 import sqlite3
 import sqlite_vec
 import numpy as np
@@ -31,6 +15,52 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 import pickle
 import os
+import json
+from pathlib import Path
+from typing import Dict
+
+# ============================================================================
+# Configuration Loading - Reads from config.json in project root
+# ============================================================================
+def load_config() -> Dict[str, str]:
+    """Load configuration from config.json in the project root (parent directory)."""
+    # Get the project root (parent of the 'code' directory)
+    script_dir = Path(__file__).parent.absolute()
+    project_root = script_dir.parent
+    config_path = project_root / "config.json"
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return config
+        except Exception as e:
+            print(f"Warning: Could not load config.json: {e}")
+            print("Using default configuration.")
+    
+    # Default configuration if config.json doesn't exist
+    return {
+        "database_path": "image_database.db",
+        "umap_output_file": "umap_3d_visualization.html",
+        "umap_cache_file": "umap_projections_cache.pkl",
+        "umap_metadata_file": "umap_image_metadata.json"
+    }
+
+def get_project_root() -> Path:
+    """Get the project root directory (parent of 'code' folder)."""
+    script_dir = Path(__file__).parent.absolute()
+    return script_dir.parent
+
+# Load configuration
+_CONFIG = load_config()
+_PROJECT_ROOT = get_project_root()
+
+# Configuration variables (paths relative to project root)
+DB_PATH = str(_PROJECT_ROOT / _CONFIG.get("database_path", "image_database.db"))
+OUTPUT_HTML_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_output_file", "umap_3d_visualization.html"))
+UMAP_CACHE_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_cache_file", "umap_projections_cache.pkl"))
+IMAGE_METADATA_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_metadata_file", "umap_image_metadata.json"))
+# ============================================================================
 
 print("Loading embeddings from database...")
 conn = sqlite3.connect(DB_PATH, timeout=30.0)
@@ -177,7 +207,6 @@ fig.update_layout(
 )
 
 # Save image metadata to separate JSON file (much smaller)
-import json
 print(f"Saving image metadata to {IMAGE_METADATA_FILE}...")
 image_metadata = df[['path', 'image_url', 'filename']].to_dict('records')
 with open(IMAGE_METADATA_FILE, 'w', encoding='utf-8') as f:

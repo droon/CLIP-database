@@ -9,35 +9,62 @@ This script provides two modes:
 NOTE: This code was generated with AI assistance.
 """
 
-# ============================================================================
-# Configuration Variables - Modify these paths as needed
-# ============================================================================
-# Default database path (SQLite database file)
-DEFAULT_DB_PATH = "image_database.db"
-
-# Default model cache directory (where HuggingFace models are stored)
-DEFAULT_MODEL_CACHE_DIR = "models"
-
-# Default results directory (where HTML search results are saved)
-DEFAULT_RESULTS_DIR = "results"
-
-# Default thumbnails directory (if thumbnails are generated)
-DEFAULT_THUMBNAILS_DIR = "thumbnails"
-# ============================================================================
-
 import argparse
 import os
 import sqlite3
 import sys
 import time
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 import hashlib
 import json
 import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import threading
+
+# ============================================================================
+# Configuration Loading - Reads from config.json in project root
+# ============================================================================
+def load_config() -> Dict[str, str]:
+    """Load configuration from config.json in the project root (parent directory)."""
+    # Get the project root (parent of the 'code' directory)
+    script_dir = Path(__file__).parent.absolute()
+    project_root = script_dir.parent
+    config_path = project_root / "config.json"
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return config
+        except Exception as e:
+            print(f"Warning: Could not load config.json: {e}")
+            print("Using default configuration.")
+    
+    # Default configuration if config.json doesn't exist
+    return {
+        "database_path": "image_database.db",
+        "model_cache_dir": "models",
+        "results_dir": "results",
+        "thumbnails_dir": "thumbnails"
+    }
+
+def get_project_root() -> Path:
+    """Get the project root directory (parent of 'code' folder)."""
+    script_dir = Path(__file__).parent.absolute()
+    return script_dir.parent
+
+# Load configuration
+_CONFIG = load_config()
+_PROJECT_ROOT = get_project_root()
+
+# Configuration variables (paths relative to project root)
+DEFAULT_DB_PATH = str(_PROJECT_ROOT / _CONFIG.get("database_path", "image_database.db"))
+DEFAULT_MODEL_CACHE_DIR = str(_PROJECT_ROOT / _CONFIG.get("model_cache_dir", "models"))
+DEFAULT_RESULTS_DIR = str(_PROJECT_ROOT / _CONFIG.get("results_dir", "results"))
+DEFAULT_THUMBNAILS_DIR = str(_PROJECT_ROOT / _CONFIG.get("thumbnails_dir", "thumbnails"))
+# ============================================================================
 
 import torch
 from PIL import Image
@@ -602,17 +629,22 @@ class ImageDatabase:
     
     def search(self, query: str, k: int = 10, is_image_path: bool = False, 
                query2: str = None, is_image_path2: bool = False, 
-               weights: Tuple[float, float] = (0.5, 0.5)) -> List[Tuple[str, float]]:
+               weights: Tuple[float, float] = (0.5, 0.5),
+               negative_query: str = None, negative_is_image: bool = False,
+               negative_weight: float = 0.5) -> List[Tuple[str, float]]:
         """
-        Search for similar images. Supports combined queries (two images, or image + text).
+        Search for similar images. Supports combined queries and negative prompts.
         
         Args:
             query: Text string or image file path (first query)
             k: Number of results to return
             is_image_path: If True, treat query as image path; otherwise as text
-            query2: Optional second query (text or image path)
+            query2: Optional second query (text or image path) for combined positive search
             is_image_path2: If True, treat query2 as image path; otherwise as text
-            weights: Tuple of (weight1, weight2) for combining queries. Default (0.5, 0.5)
+            weights: Tuple of (weight1, weight2) for combining positive queries. Default (0.5, 0.5)
+            negative_query: Optional negative prompt (text or image path) to exclude
+            negative_is_image: If True, treat negative_query as image path; otherwise as text
+            negative_weight: Weight for negative prompt subtraction (default: 0.5)
         
         Returns:
             List of (file_path, similarity_score) tuples
@@ -660,6 +692,52 @@ class ImageDatabase:
                 embedding = embedding1
         else:
             embedding = embedding1
+        
+        # Apply negative prompt if provided (subtract negative embedding)
+        if negative_query is not None:
+            # Get negative embedding
+            if negative_is_image:
+                if not os.path.exists(negative_query):
+                    print(f"Warning: Negative image file {negative_query} does not exist, ignoring negative prompt")
+                else:
+                    negative_emb = self._get_image_embedding(negative_query)
+                    if negative_emb is not None:
+                        # Subtract negative embedding: move away from negative concept
+                        embedding = embedding - negative_weight * negative_emb
+                        # Re-normalize
+                        norm = np.linalg.norm(embedding)
+                        if norm > 0:
+                            embedding = embedding / norm
+                        else:
+                            print("Warning: Embedding became zero after negative subtraction, using original")
+                            # Restore original embedding
+                            if query2 is None:
+                                embedding = embedding1
+                            else:
+                                w1, w2 = weights[0] / (weights[0] + weights[1]), weights[1] / (weights[0] + weights[1])
+                                embedding = w1 * embedding1 + w2 * embedding2
+                                norm = np.linalg.norm(embedding)
+                                if norm > 0:
+                                    embedding = embedding / norm
+            else:
+                negative_emb = self._get_text_embedding(negative_query)
+                # Subtract negative embedding: move away from negative concept
+                embedding = embedding - negative_weight * negative_emb
+                # Re-normalize
+                norm = np.linalg.norm(embedding)
+                if norm > 0:
+                    embedding = embedding / norm
+                else:
+                    print("Warning: Embedding became zero after negative subtraction, using original")
+                    # Restore original embedding
+                    if query2 is None:
+                        embedding = embedding1
+                    else:
+                        w1, w2 = weights[0] / (weights[0] + weights[1]), weights[1] / (weights[0] + weights[1])
+                        embedding = w1 * embedding1 + w2 * embedding2
+                        norm = np.linalg.norm(embedding)
+                        if norm > 0:
+                            embedding = embedding / norm
         
         conn = sqlite3.connect(self.db_path, timeout=30.0)
         # Enable WAL mode for better concurrent access (allows reads during writes)
@@ -880,6 +958,7 @@ def generate_output_filename(query: str, is_image_path: bool = False, results_di
     """Generate a safe filename from query, with auto-incrementing if file exists."""
     if results_dir is None:
         results_dir = Path(DEFAULT_RESULTS_DIR)
+    results_dir.mkdir(parents=True, exist_ok=True)
     results_dir.mkdir(exist_ok=True)
     
     if is_image_path:
@@ -935,6 +1014,9 @@ def main():
     search_parser.add_argument('--query2', help='Second query for combined search (text or image path)')
     search_parser.add_argument('--image2', action='store_true', help='Treat query2 as image file path')
     search_parser.add_argument('--weights', nargs=2, type=float, default=[0.5, 0.5], metavar=('W1', 'W2'), help='Weights for combining queries (default: 0.5 0.5)')
+    search_parser.add_argument('--negative', help='Negative prompt to exclude (text or image path, use --negative-image for image)')
+    search_parser.add_argument('--negative-image', action='store_true', help='Treat negative prompt as image file path')
+    search_parser.add_argument('--negative-weight', type=float, default=0.5, help='Weight for negative prompt subtraction (default: 0.5)')
     search_parser.add_argument('--db', default=DEFAULT_DB_PATH, help='Database path')
     search_parser.add_argument('--model-cache', default=DEFAULT_MODEL_CACHE_DIR, help='Model cache directory')
     search_parser.add_argument('--output', default='results.html', help='Output HTML file')
@@ -1005,6 +1087,23 @@ def main():
                             print("Invalid number. Usage: k:20")
                             continue
                     
+                    # Parse negative queries (format: "query - negative")
+                    negative_query = None
+                    negative_is_image = False
+                    negative_weight = 0.5
+                    
+                    if ' - ' in query:
+                        parts = query.split(' - ', 1)
+                        query = parts[0].strip()
+                        negative_str = parts[1].strip()
+                        
+                        if negative_str.lower().startswith('image:'):
+                            negative_query = negative_str.split(':', 1)[1].strip()
+                            negative_is_image = True
+                        else:
+                            negative_query = negative_str
+                            negative_is_image = False
+                    
                     # Parse combined queries (format: "query1 + query2")
                     query_parts = [q.strip() for q in query.split('+', 1)]
                     if len(query_parts) == 2:
@@ -1031,6 +1130,8 @@ def main():
                         print(f"  Query 1: {query} ({'image' if is_image_query else 'text'})")
                         print(f"  Query 2: {query2} ({'image' if is_image_query2 else 'text'})")
                         print(f"  Weights: {weights[0]:.1f} / {weights[1]:.1f}")
+                        if negative_query:
+                            print(f"  Negative: {negative_query} ({'image' if negative_is_image else 'text'})")
                         print(f"  Number of results: {current_k}")
                     else:
                         # Single query
@@ -1043,11 +1144,15 @@ def main():
                             is_image_query = False
                         
                         print(f"\nSearching for: {query}")
-                        print(f"Number of results: {current_k}")
+                        if negative_query:
+                            print(f"  Negative: {negative_query} ({'image' if negative_is_image else 'text'})")
+                        print(f"  Number of results: {current_k}")
                     
                     results = db.search(query, k=current_k, is_image_path=is_image_query,
                                       query2=query2, is_image_path2=is_image_query2,
-                                      weights=weights)
+                                      weights=weights,
+                                      negative_query=negative_query, negative_is_image=negative_is_image,
+                                      negative_weight=negative_weight)
                     
                     if results:
                         print(f"\nFound {len(results)} results:")
@@ -1086,9 +1191,15 @@ def main():
                 print(f"  Query 2: {args.query2} ({'image' if args.image2 else 'text'})")
                 print(f"  Weights: {args.weights[0]:.1f} / {args.weights[1]:.1f}")
             
+            # Check for negative query
+            if args.negative:
+                print(f"  Negative: {args.negative} ({'image' if args.negative_image else 'text'})")
+            
             results = db.search(args.query, k=args.k, is_image_path=args.image,
                               query2=args.query2, is_image_path2=args.image2,
-                              weights=tuple(args.weights))
+                              weights=tuple(args.weights),
+                              negative_query=args.negative, negative_is_image=args.negative_image,
+                              negative_weight=args.negative_weight)
             
             if results:
                 print(f"\nFound {len(results)} results:")
@@ -1103,7 +1214,7 @@ def main():
                         query_name = re.sub(r'[<>:"/\\|?*]', '_', query_name)
                         query_name = query_name.replace(' ', '_')[:100]
                         results_dir = Path(DEFAULT_RESULTS_DIR)
-                        results_dir.mkdir(exist_ok=True)
+                        results_dir.mkdir(parents=True, exist_ok=True)
                         output_file = results_dir / f"{query_name}.html"
                         counter = 1
                         while output_file.exists():
