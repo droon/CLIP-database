@@ -51,15 +51,26 @@ def get_project_root() -> Path:
     script_dir = Path(__file__).parent.absolute()
     return script_dir.parent
 
+def resolve_path(config_path: str, project_root: Path) -> str:
+    """Resolve a path from config - use as-is if absolute, otherwise join with project root."""
+    if not config_path:
+        return ""
+    path = Path(config_path)
+    # If path is already absolute, use it as-is
+    if path.is_absolute():
+        return str(path)
+    # Otherwise, join with project root
+    return str(project_root / path)
+
 # Load configuration
 _CONFIG = load_config()
 _PROJECT_ROOT = get_project_root()
 
-# Configuration variables (paths relative to project root)
-DB_PATH = str(_PROJECT_ROOT / _CONFIG.get("database_path", "image_database.db"))
-OUTPUT_HTML_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_output_file", "umap_3d_visualization.html"))
-UMAP_CACHE_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_cache_file", "umap_projections_cache.pkl"))
-IMAGE_METADATA_FILE = str(_PROJECT_ROOT / _CONFIG.get("umap_metadata_file", "umap_image_metadata.json"))
+# Configuration variables (paths relative to project root, or absolute if specified)
+DB_PATH = resolve_path(_CONFIG.get("database_path", "image_database.db"), _PROJECT_ROOT)
+OUTPUT_HTML_FILE = resolve_path(_CONFIG.get("umap_output_file", "umap_3d_visualization.html"), _PROJECT_ROOT)
+UMAP_CACHE_FILE = resolve_path(_CONFIG.get("umap_cache_file", "umap_projections_cache.pkl"), _PROJECT_ROOT)
+IMAGE_METADATA_FILE = resolve_path(_CONFIG.get("umap_metadata_file", "umap_image_metadata.json"), _PROJECT_ROOT)
 # ============================================================================
 
 print("Loading embeddings from database...")

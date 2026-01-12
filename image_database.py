@@ -55,15 +55,26 @@ def get_project_root() -> Path:
     script_dir = Path(__file__).parent.absolute()
     return script_dir.parent
 
+def resolve_path(config_path: str, project_root: Path) -> str:
+    """Resolve a path from config - use as-is if absolute, otherwise join with project root."""
+    if not config_path:
+        return ""
+    path = Path(config_path)
+    # If path is already absolute, use it as-is
+    if path.is_absolute():
+        return str(path)
+    # Otherwise, join with project root
+    return str(project_root / path)
+
 # Load configuration
 _CONFIG = load_config()
 _PROJECT_ROOT = get_project_root()
 
-# Configuration variables (paths relative to project root)
-DEFAULT_DB_PATH = str(_PROJECT_ROOT / _CONFIG.get("database_path", "image_database.db"))
-DEFAULT_MODEL_CACHE_DIR = str(_PROJECT_ROOT / _CONFIG.get("model_cache_dir", "models"))
-DEFAULT_RESULTS_DIR = str(_PROJECT_ROOT / _CONFIG.get("results_dir", "results"))
-DEFAULT_THUMBNAILS_DIR = str(_PROJECT_ROOT / _CONFIG.get("thumbnails_dir", "thumbnails"))
+# Configuration variables (paths relative to project root, or absolute if specified)
+DEFAULT_DB_PATH = resolve_path(_CONFIG.get("database_path", "image_database.db"), _PROJECT_ROOT)
+DEFAULT_MODEL_CACHE_DIR = resolve_path(_CONFIG.get("model_cache_dir", "models"), _PROJECT_ROOT)
+DEFAULT_RESULTS_DIR = resolve_path(_CONFIG.get("results_dir", "results"), _PROJECT_ROOT)
+DEFAULT_THUMBNAILS_DIR = resolve_path(_CONFIG.get("thumbnails_dir", "thumbnails"), _PROJECT_ROOT)
 # ============================================================================
 
 import torch
