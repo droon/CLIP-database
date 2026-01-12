@@ -126,6 +126,35 @@ cd code
 python image_database.py search "sunset" --query2 /path/to/image.jpg --weights 0.7 0.3 -k 20
 ```
 
+#### Negative Prompts (Exclusion)
+Use negative prompts to exclude unwanted concepts from your search results. The system subtracts the negative embedding from your query, moving results away from the negative concept.
+
+**Text negative prompt:**
+```bash
+cd code
+python image_database.py search "beautiful landscape" --negative "people" -k 20
+```
+
+**Image negative prompt:**
+```bash
+cd code
+python image_database.py search "sunset" --negative /path/to/unwanted_image.jpg --negative-image -k 20
+```
+
+**Adjust negative weight:**
+```bash
+cd code
+python image_database.py search "nature" --negative "buildings" --negative-weight 0.7 -k 20
+```
+
+The `--negative-weight` parameter (default: 0.5) controls how strongly the negative prompt affects results. Higher values (0.7-1.0) exclude the negative concept more aggressively, while lower values (0.2-0.4) provide subtle filtering.
+
+**Combined with other features:**
+```bash
+cd code
+python image_database.py search "ocean" --query2 /path/to/reference.jpg --negative "boats" --weights 0.6 0.4 --negative-weight 0.6 -k 20
+```
+
 #### Interactive Mode
 ```bash
 cd code
@@ -136,8 +165,15 @@ In interactive mode:
 - Enter text queries directly
 - Use `image:/path/to/image.jpg` for image queries
 - Combine queries with `+`: `image:/path/to/img.jpg + sunset`
+- Use negative prompts with ` - `: `beautiful landscape - people` or `sunset - image:/path/to/unwanted.jpg`
 - Change result count with `k:20`
 - Type `quit` or `exit` to end session
+
+**Negative prompt examples in interactive mode:**
+- `ocean - boats` (exclude boats from ocean images)
+- `nature - buildings` (find nature without buildings)
+- `portrait - image:/path/to/bad_example.jpg` (exclude similar style to bad example)
+- `sunset + ocean - people` (combine positive queries and exclude people)
 
 ### 3D Visualization
 
