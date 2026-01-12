@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Model cache
+models/
+*.bin
+*.safetensors
+*.onnx
+
+# Results and outputs
+results/
+results.html
+*.html
+thumbnails/
+_thumbs/
+_thumbs_umap/
+
+# Cache files
+*.pkl
+*.cache
+umap_projections_cache.pkl
+umap_image_metadata.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Personal/test files
+view.jpg
+results - Copy.html
