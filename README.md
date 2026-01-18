@@ -11,7 +11,6 @@ A searchable image database using SigLIP 2 (CLIP) embeddings and SQLite-vec for 
 - **Image Search**: Find similar images using a reference image
 - **Combined Search**: Combine text and image queries with weighted blending
 - **Interactive Mode**: Load model once and run multiple queries
-- **3D Visualization**: UMAP-based 3D visualization of image embeddings with clustering
 - **HTML Gallery**: Beautiful search results with image previews and direct file access
 
 ![Search Results Example](browser.png)
@@ -34,7 +33,7 @@ cd CLIP-database
 
 2. Install dependencies:
 ```bash
-cd github
+cd core
 pip install -r requirements.txt
 ```
 
@@ -53,7 +52,7 @@ pip install sqlite-vec
 Scan a directory and build the image database:
 
 ```bash
-cd github
+cd core
 python image_database.py scan /path/to/images --db "/path/to/database.db"
 ```
 
@@ -64,7 +63,7 @@ Options:
 - `--limit`: Limit number of images to process (for testing)
 
 ```bash
-cd github
+cd core
 python image_database.py scan /path/to/images --batch-size 75 --inference-batch-size 16 --profile --limit 100
 ```
 
@@ -72,7 +71,7 @@ python image_database.py scan /path/to/images --batch-size 75 --inference-batch-
 
 #### Text Search
 ```bash
-cd github
+cd core
 python image_database.py search "a red car" -k 20 --db "/path/to/database.db"
 ```
 
@@ -83,25 +82,25 @@ python image_database.py search "a red car" --db "/path/to/database.db" -k 20
 
 #### Image Search
 ```bash
-cd github
+cd core
 python image_database.py search /path/to/image.jpg --image -k 20
 ```
 
 #### Combined Search
 ```bash
-cd github
+cd core
 python image_database.py search "sunset" --query2 /path/to/image.jpg --weights 0.7 0.3 -k 20
 ```
 
 #### Negative Prompts
 ```bash
-cd github
+cd core
 python image_database.py search "nature" --negative "buildings" -k 20
 ```
 
 #### Interactive Mode
 ```bash
-cd github
+cd core
 python image_database.py search --interactive
 ```
 
@@ -113,25 +112,6 @@ In interactive mode:
 - Change result count with `k:20`
 - Type `quit` or `exit` to end session
 
-
-### 3D Visualization
-
-Generate a UMAP 3D visualization of all image embeddings:
-
-```bash
-cd github
-python visualize_umap.py
-```
-
-This will:
-1. Load embeddings from the database
-2. Compute UMAP projections (cached for future runs)
-3. Cluster embeddings for color coding
-4. Generate an interactive HTML visualization
-
-Open the generated HTML file in your browser and click on points to see image previews.
-
-**Note:** The HTML results include "Open Image" and "Open Folder" links that use the `localexplorer:` protocol. To use these links, install a browser extension like [Local Explorer](https://chrome.google.com/webstore/detail/local-explorer/llbiblehpbpeflfgjcdfcpcakjhddedi) for Chrome/Edge. Without the extension, images will still display, but the file/folder links won't work.
 
 ## Model
 
@@ -154,7 +134,6 @@ The SQLite database contains:
 - Use `--inference-batch-size` to optimize GPU memory usage
 - Enable `--profile` to identify bottlenecks
 - The database uses WAL mode for better concurrent access
-- UMAP projections are cached to avoid recomputation
 
 ## License
 

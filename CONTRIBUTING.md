@@ -10,4 +10,4 @@ Please open a pull request for any change.
 
 ### Checks
 
-CI runs a lightweight syntax check (`python -m py_compile`) on `image_database.py` and `visualize_umap.py`.
+CI runs a lightweight syntax check (`python -m py_compile`) on `image_database.py`.
