@@ -8,3 +8,4 @@ sentencepiece>=0.1.99
 umap-learn>=0.5.5
 plotly>=5.18.0
 pandas>=2.0.0
+PyMuPDF>=1.23.0

@@ -23,11 +23,9 @@ from typing import Dict
 # Configuration Loading - Reads from config.json in project root
 # ============================================================================
 def load_config() -> Dict[str, str]:
-    """Load configuration from config.json in the project root (parent directory)."""
-    # Get the project root (parent of the 'code' directory)
+    """Load configuration from config.json in the same directory as the script."""
     script_dir = Path(__file__).parent.absolute()
-    project_root = script_dir.parent
-    config_path = project_root / "config.json"
+    config_path = script_dir / "config.json"
     
     if config_path.exists():
         try:
@@ -46,31 +44,27 @@ def load_config() -> Dict[str, str]:
         "umap_metadata_file": "umap_image_metadata.json"
     }
 
-def get_project_root() -> Path:
-    """Get the project root directory (parent of 'code' folder)."""
-    script_dir = Path(__file__).parent.absolute()
-    return script_dir.parent
-
-def resolve_path(config_path: str, project_root: Path) -> str:
-    """Resolve a path from config - use as-is if absolute, otherwise join with project root."""
+def resolve_path(config_path: str, base_dir: Path) -> str:
+    """Resolve a path from config - use as-is if absolute, otherwise join with base directory."""
     if not config_path:
         return ""
     path = Path(config_path)
     # If path is already absolute, use it as-is
     if path.is_absolute():
         return str(path)
-    # Otherwise, join with project root
-    return str(project_root / path)
+    # Otherwise, join with base directory (parent of code folder for outputs)
+    return str(base_dir / path)
 
 # Load configuration
 _CONFIG = load_config()
-_PROJECT_ROOT = get_project_root()
+# For outputs, use parent directory. For absolute paths in config, they'll be used as-is.
+_OUTPUT_BASE = Path(__file__).parent.absolute().parent
 
-# Configuration variables (paths relative to project root, or absolute if specified)
-DB_PATH = resolve_path(_CONFIG.get("database_path", "image_database.db"), _PROJECT_ROOT)
-OUTPUT_HTML_FILE = resolve_path(_CONFIG.get("umap_output_file", "umap_3d_visualization.html"), _PROJECT_ROOT)
-UMAP_CACHE_FILE = resolve_path(_CONFIG.get("umap_cache_file", "umap_projections_cache.pkl"), _PROJECT_ROOT)
-IMAGE_METADATA_FILE = resolve_path(_CONFIG.get("umap_metadata_file", "umap_image_metadata.json"), _PROJECT_ROOT)
+# Configuration variables (paths relative to output base, or absolute if specified)
+DB_PATH = resolve_path(_CONFIG.get("database_path", "image_database.db"), _OUTPUT_BASE)
+OUTPUT_HTML_FILE = resolve_path(_CONFIG.get("umap_output_file", "umap_3d_visualization.html"), _OUTPUT_BASE)
+UMAP_CACHE_FILE = resolve_path(_CONFIG.get("umap_cache_file", "umap_projections_cache.pkl"), _OUTPUT_BASE)
+IMAGE_METADATA_FILE = resolve_path(_CONFIG.get("umap_metadata_file", "umap_image_metadata.json"), _OUTPUT_BASE)
 # ============================================================================
 
 print("Loading embeddings from database...")
@@ -107,8 +101,23 @@ all_image_paths = []
 
 for file_path, emb_data in tqdm(all_results, desc="Processing embeddings"):
     try:
-        # Convert BLOB to numpy array
-        emb = np.frombuffer(emb_data, dtype=np.float32)
+        # Handle both binary and JSON formats
+        if isinstance(emb_data, bytes):
+            # Try binary format first
+            try:
+                emb = np.frombuffer(emb_data, dtype=np.float32)
+                if emb.shape[0] != 1152:
+                    # Wrong size, might be JSON string encoded as bytes
+                    emb = np.array(json.loads(emb_data.decode('utf-8')), dtype=np.float32)
+            except:
+                # Not binary, try JSON
+                emb = np.array(json.loads(emb_data.decode('utf-8')), dtype=np.float32)
+        elif isinstance(emb_data, str):
+            # JSON string format
+            emb = np.array(json.loads(emb_data), dtype=np.float32)
+        else:
+            continue
+        
         if emb.shape[0] == 1152:  # Verify dimension
             all_vectors.append(emb)
             all_image_paths.append(file_path)

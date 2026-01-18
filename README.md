@@ -34,7 +34,7 @@ cd CLIP-database
 
 2. Install dependencies:
 ```bash
-cd code
+cd github
 pip install -r requirements.txt
 ```
 
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 pip install sqlite-vec
 ```
 
-4. (Optional) Copy `config.json.example` to `config.json` and edit paths if needed.
+4. (Optional) Copy `config.json.example` to `../config.json` (repo root) and edit paths if needed.
 
 
 ## Usage
@@ -53,8 +53,8 @@ pip install sqlite-vec
 Scan a directory and build the image database:
 
 ```bash
-cd code
-python image_database.py scan /path/to/images --batch-size 75 --inference-batch-size 16 --profile --limit 100
+cd github
+python image_database.py scan /path/to/images --db "/path/to/database.db"
 ```
 
 Options:
@@ -63,35 +63,45 @@ Options:
 - `--profile`: Show performance profiling information
 - `--limit`: Limit number of images to process (for testing)
 
+```bash
+cd github
+python image_database.py scan /path/to/images --batch-size 75 --inference-batch-size 16 --profile --limit 100
+```
+
 ### Searching Images
 
 #### Text Search
 ```bash
-cd code
-python image_database.py search "a red car" -k 20
+cd github
+python image_database.py search "a red car" -k 20 --db "/path/to/database.db"
+```
+
+To search in a specific database:
+```bash
+python image_database.py search "a red car" --db "/path/to/database.db" -k 20
 ```
 
 #### Image Search
 ```bash
-cd code
+cd github
 python image_database.py search /path/to/image.jpg --image -k 20
 ```
 
 #### Combined Search
 ```bash
-cd code
+cd github
 python image_database.py search "sunset" --query2 /path/to/image.jpg --weights 0.7 0.3 -k 20
 ```
 
 #### Negative Prompts
 ```bash
-cd code
+cd github
 python image_database.py search "nature" --negative "buildings" -k 20
 ```
 
 #### Interactive Mode
 ```bash
-cd code
+cd github
 python image_database.py search --interactive
 ```
 
@@ -109,7 +119,7 @@ In interactive mode:
 Generate a UMAP 3D visualization of all image embeddings:
 
 ```bash
-cd code
+cd github
 python visualize_umap.py
 ```
 
