@@ -1,0 +1,9 @@
+{
+  "database_dir": "C:\\MyExampleProject",
+  "model_cache_dir": "C:\\MyExampleProject\\models",
+  "results_dir": "results",
+  "thumbnails_dir": "thumbnails",
+  "umap_output_file": "umap_3d_visualization.html",
+  "umap_cache_file": "umap_projections_cache.pkl",
+  "umap_metadata_file": "umap_image_metadata.json"
+}
